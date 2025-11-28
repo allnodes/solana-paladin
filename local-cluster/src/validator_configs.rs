@@ -91,6 +91,14 @@ pub fn safe_clone_config(config: &ValidatorConfig) -> ValidatorConfig {
         batch_interval: config.batch_interval,
         p3_socket: config.p3_socket,
         p3_mev_socket: config.p3_mev_socket,
+
+        // Allnodes configuration
+        identity_path: config.identity_path.clone(),
+        use_mostly_confirmed_threshold: config.use_mostly_confirmed_threshold,
+        mostly_confirmed_threshold_config_path: config
+            .mostly_confirmed_threshold_config_path
+            .clone(),
+        voting_patch_flags: config.voting_patch_flags,
     }
 }
 
