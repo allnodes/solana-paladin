@@ -161,7 +161,7 @@ dependencies = [
  "crossbeam-channel",
  "ctrlc",
  "dirs-next",
- "indicatif 0.18.3",
+ "indicatif",
  "nix",
  "reqwest 0.12.24",
  "scopeguard",
@@ -412,6 +412,9 @@ dependencies = [
  "agave-geyser-plugin-interface",
  "agave-logger",
  "agave-snapshots",
+ "allnodes-client",
+ "allnodes-service-protos",
+ "allnodes-solana",
  "arc-swap",
  "assert_cmd",
  "chrono",
@@ -420,7 +423,7 @@ dependencies = [
  "core_affinity",
  "crossbeam-channel",
  "fd-lock",
- "indicatif 0.18.3",
+ "indicatif",
  "itertools 0.12.1",
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -657,6 +660,46 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ddd31a130427c27518df266943a5308ed92d4b226cc639f5a8f1002816174301"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "allnodes-client"
+version = "3.1.2"
+dependencies = [
+ "allnodes-service-protos",
+ "bincode",
+ "futures-util",
+ "hex",
+ "log",
+ "mid",
+ "parking_lot 0.12.5",
+ "tokio",
+ "tonic",
+]
+
+[[package]]
+name = "allnodes-service-protos"
+version = "3.1.2"
+dependencies = [
+ "borsh",
+ "prost",
+ "solana-hash 3.0.0",
+ "solana-pubkey 3.0.0",
+ "thiserror 2.0.17",
+ "tonic",
+ "tonic-build",
+]
+
+[[package]]
+name = "allnodes-solana"
+version = "3.1.2"
+dependencies = [
+ "allnodes-client",
+ "allnodes-service-protos",
+ "core_affinity",
+ "log",
+ "prost",
+ "solana-entry",
 ]
 
 [[package]]
@@ -3690,6 +3733,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hmac-sha256"
+version = "1.1.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad6880c8d4a9ebf39c6e8b77007ce223f646a4d21ce29d99f70cb16420545425"
+
+[[package]]
 name = "http"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3830,20 +3879,6 @@ dependencies = [
  "tokio",
  "tokio-native-tls",
  "tower-service",
-]
-
-[[package]]
-name = "hyper-rustls"
-version = "0.24.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec3efd23720e2049821a693cbc7e65ea87c72f1c58ff2f9522ff332b1491e590"
-dependencies = [
- "futures-util",
- "http 0.2.12",
- "hyper 0.14.32",
- "rustls 0.21.12",
- "tokio",
- "tokio-rustls 0.24.1",
 ]
 
 [[package]]
@@ -4116,19 +4151,6 @@ dependencies = [
  "equivalent",
  "hashbrown 0.16.1",
  "rayon",
-]
-
-[[package]]
-name = "indicatif"
-version = "0.17.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "183b3088984b400f4cfac3620d5e076c84da5364016b4f49473de574b2586235"
-dependencies = [
- "console 0.15.11",
- "number_prefix",
- "portable-atomic",
- "unicode-width 0.2.2",
- "web-time",
 ]
 
 [[package]]
@@ -4763,6 +4785,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "mid"
+version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "625672364b1e9c02508daefc259ccdf07a7ecc55145769ef7938d3a815423261"
+dependencies = [
+ "hex",
+ "hmac-sha256",
+]
+
+[[package]]
 name = "mime"
 version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5058,12 +5090,6 @@ dependencies = [
  "quote",
  "syn 2.0.111",
 ]
-
-[[package]]
-name = "number_prefix"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
 
 [[package]]
 name = "objc2"
@@ -6202,7 +6228,6 @@ version = "0.11.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd67538700a17451e7cba03ac727fb961abb7607553461627b97de0b89cf4a62"
 dependencies = [
- "async-compression",
  "base64 0.21.7",
  "bytes",
  "encoding_rs",
@@ -6212,7 +6237,6 @@ dependencies = [
  "http 0.2.12",
  "http-body 0.4.6",
  "hyper 0.14.32",
- "hyper-rustls 0.24.2",
  "hyper-tls",
  "ipnet",
  "js-sys",
@@ -6222,7 +6246,6 @@ dependencies = [
  "once_cell",
  "percent-encoding 2.3.2",
  "pin-project-lite",
- "rustls 0.21.12",
  "rustls-pemfile",
  "serde",
  "serde_json",
@@ -6231,14 +6254,11 @@ dependencies = [
  "system-configuration",
  "tokio",
  "tokio-native-tls",
- "tokio-rustls 0.24.1",
- "tokio-util 0.7.17",
  "tower-service",
  "url 2.5.7",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "webpki-roots 0.25.4",
  "winreg",
 ]
 
@@ -6258,7 +6278,7 @@ dependencies = [
  "http-body 1.0.1",
  "http-body-util",
  "hyper 1.8.1",
- "hyper-rustls 0.27.7",
+ "hyper-rustls",
  "hyper-util",
  "js-sys",
  "log",
@@ -8020,7 +8040,7 @@ dependencies = [
  "console 0.16.1",
  "ed25519-dalek 1.0.1",
  "humantime",
- "indicatif 0.18.3",
+ "indicatif",
  "pretty-hex",
  "semver",
  "serde",
@@ -8063,7 +8083,7 @@ dependencies = [
  "futures 0.3.31",
  "futures-util",
  "indexmap 2.12.1",
- "indicatif 0.18.3",
+ "indicatif",
  "log",
  "quinn",
  "rayon",
@@ -8291,7 +8311,7 @@ dependencies = [
  "crossbeam-channel",
  "futures-util",
  "indexmap 2.12.1",
- "indicatif 0.18.3",
+ "indicatif",
  "log",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
@@ -8321,6 +8341,9 @@ dependencies = [
  "agave-verified-packet-receiver",
  "agave-votor",
  "ahash 0.8.12",
+ "allnodes-client",
+ "allnodes-service-protos",
+ "allnodes-solana",
  "anyhow",
  "arc-swap",
  "arrayref",
@@ -8840,13 +8863,11 @@ dependencies = [
 [[package]]
 name = "solana-file-download"
 version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6884e13cc98f58e609a9b73e3d53f728f0f743b8c15c6768cad6f6382c336c1"
 dependencies = [
- "console 0.15.11",
- "indicatif 0.17.11",
+ "console 0.16.1",
+ "indicatif",
  "log",
- "reqwest 0.11.27",
+ "reqwest 0.12.24",
 ]
 
 [[package]]
@@ -9300,6 +9321,7 @@ dependencies = [
  "agave-logger",
  "agave-reserved-account-keys",
  "agave-snapshots",
+ "allnodes-client",
  "anyhow",
  "assert_matches",
  "bincode",
@@ -10381,7 +10403,7 @@ dependencies = [
  "bs58",
  "crossbeam-channel",
  "futures 0.3.31",
- "indicatif 0.18.3",
+ "indicatif",
  "jsonrpc-core",
  "jsonrpc-http-server",
  "log",
@@ -10947,8 +10969,6 @@ dependencies = [
 [[package]]
 name = "solana-sha256-hasher"
 version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9b912ba6f71cb202c0c3773ec77bf898fa9fe0c78691a2d6859b3b5b8954719"
 dependencies = [
  "sha2 0.10.9",
  "solana-define-syscall 3.0.0",
@@ -11607,7 +11627,7 @@ dependencies = [
  "csv",
  "ctrlc",
  "indexmap 2.12.1",
- "indicatif 0.18.3",
+ "indicatif",
  "pickledb",
  "serde",
  "solana-account-decoder",
@@ -11683,7 +11703,7 @@ dependencies = [
  "bincode",
  "futures-util",
  "indexmap 2.12.1",
- "indicatif 0.18.3",
+ "indicatif",
  "log",
  "rayon",
  "solana-client-traits",
@@ -11930,6 +11950,7 @@ dependencies = [
  "agave-logger",
  "agave-votor",
  "agave-xdp",
+ "allnodes-client",
  "arc-swap",
  "assert_matches",
  "bencher",
@@ -13922,12 +13943,6 @@ checksum = "b03058f88386e5ff5310d9111d53f48b17d732b401aeb83a8d5190f2ac459338"
 dependencies = [
  "rustls-webpki 0.100.3",
 ]
-
-[[package]]
-name = "webpki-roots"
-version = "0.25.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f20c57d8d7db6d3b86154206ae5d8fba62dd39573114de97c2cb0578251f8e1"
 
 [[package]]
 name = "webpki-roots"

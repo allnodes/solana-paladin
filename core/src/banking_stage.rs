@@ -97,9 +97,11 @@ const DEFAULT_NUM_WORKERS: NonZeroUsize = NonZeroUsize::new(4).unwrap();
 
 pub const DEFAULT_BATCH_INTERVAL: Duration = Duration::from_millis(50);
 
+allnodes_client::constants! {
 #[cfg_attr(feature = "dev-context-only-utils", qualifiers(pub))]
 const TOTAL_BUFFERED_PACKETS: usize = 100_000;
 const SLOT_BOUNDARY_CHECK_PERIOD: Duration = Duration::from_millis(10);
+}
 
 #[derive(Debug, Default)]
 pub struct BankingStageStats {
