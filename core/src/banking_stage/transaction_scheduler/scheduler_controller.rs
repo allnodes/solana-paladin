@@ -77,7 +77,7 @@ where
             decision_maker,
             receive_and_buffer,
             bank_forks,
-            container: R::Container::with_capacity(TOTAL_BUFFERED_PACKETS),
+            container: R::Container::with_capacity(*TOTAL_BUFFERED_PACKETS),
             scheduler,
             count_metrics: SchedulerCountMetrics::default(),
             timing_metrics: SchedulerTimingMetrics::default(),
@@ -354,7 +354,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
     use {
         super::*,
         crate::banking_stage::{
@@ -388,6 +387,7 @@ mod tests {
         solana_system_interface::instruction as system_instruction,
         solana_transaction::Transaction,
         std::{
+            collections::HashSet,
             sync::{atomic::AtomicBool, Arc, RwLock},
             time::Duration,
         },

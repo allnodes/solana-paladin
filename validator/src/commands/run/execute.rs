@@ -128,7 +128,8 @@ pub fn execute(
         println!("log file: {logfile}");
         Some(logfile)
     };
-    let use_progress_bar = logfile.is_none();
+    let use_progress_bar =
+        logfile.is_none() && std::io::IsTerminal::is_terminal(&std::io::stdout());
     let _logger_thread = redirect_stderr_to_file(logfile);
 
     info!("{} {}", crate_name!(), solana_version);
@@ -180,22 +181,6 @@ pub fn execute(
             ledger_path.display(),
         )
     })?;
-
-    let max_ledger_shreds = if matches.is_present("limit_ledger_size") {
-        let limit_ledger_size = match matches.value_of("limit_ledger_size") {
-            Some(_) => value_t_or_exit!(matches, "limit_ledger_size", u64),
-            None => DEFAULT_MAX_LEDGER_SHREDS,
-        };
-        if limit_ledger_size < DEFAULT_MIN_MAX_LEDGER_SHREDS {
-            Err(format!(
-                "The provided --limit-ledger-size value was too small, the minimum value is \
-                 {DEFAULT_MIN_MAX_LEDGER_SHREDS}"
-            ))?;
-        }
-        Some(limit_ledger_size)
-    } else {
-        None
-    };
 
     let debug_keys: Option<Arc<HashSet<_>>> = if matches.is_present("debug_key") {
         Some(Arc::new(
@@ -657,7 +642,7 @@ pub fn execute(
         repair_whitelist,
         repair_handler_type: RepairHandlerType::default(),
         gossip_validators,
-        max_ledger_shreds,
+        max_ledger_shreds: None,
         blockstore_options: run_args.blockstore_options,
         run_verification: !matches.is_present("skip_startup_ledger_verification"),
         debug_keys,
@@ -693,8 +678,7 @@ pub fn execute(
         no_os_network_stats_reporting: matches.is_present("no_os_network_stats_reporting"),
         no_os_cpu_stats_reporting: matches.is_present("no_os_cpu_stats_reporting"),
         no_os_disk_stats_reporting: matches.is_present("no_os_disk_stats_reporting"),
-        poh_pinned_cpu_core: value_of(matches, "poh_pinned_cpu_core")
-            .unwrap_or(poh_service::DEFAULT_PINNED_CPU_CORE),
+        poh_pinned_cpu_core: value_of(matches, "poh_pinned_cpu_core"),
         poh_hashes_per_batch: value_of(matches, "poh_hashes_per_batch")
             .unwrap_or(poh_service::DEFAULT_HASHES_PER_BATCH),
         process_ledger_before_services: matches.is_present("process_ledger_before_services"),
@@ -766,7 +750,7 @@ pub fn execute(
                 value_of(matches, "batch_interval_ms").expect("Couldn't parse --batch-interval-ms"),
             )
         } else {
-            DEFAULT_BATCH_INTERVAL
+            *DEFAULT_BATCH_INTERVAL
         },
         p3_socket: SocketAddr::V4(SocketAddrV4::new(
             Ipv4Addr::UNSPECIFIED,
@@ -777,9 +761,35 @@ pub fn execute(
             value_of(matches, "p3_mev_port").unwrap(),
         )),
         secondary_block_engine_urls,
+
+        // Allnodes config
+        identity_path: match matches.value_of("identity") {
+            None | Some("ASK") => None,
+            Some(path) => PathBuf::from_str(path).ok(),
+        },
+        use_mostly_confirmed_threshold: !matches.is_present("disable_mostly_confirmed_threshold"),
+        mostly_confirmed_threshold_config_path: value_t!(
+            matches,
+            "mostly_confirmed_threshold_config",
+            PathBuf
+        )
+        .ok(),
+        voting_patch_flags: None,
+        voting_patch_flags2: solana_core::allnodes::init_flags2(
+            matches.is_present("experimental_feature"),
+        ),
+        poh_message: None,
     };
 
-    let reserved = validator_config
+    solana_core::allnodes::init(
+        &ledger_path,
+        &mut validator_config,
+        matches.is_present("enable_xdp"),
+        xdp_interface,
+        xdp_zero_copy,
+    );
+
+    let mut reserved = validator_config
         .retransmit_xdp
         .as_ref()
         .map(|xdp| xdp.cpus.clone())
@@ -787,6 +797,11 @@ pub fn execute(
         .iter()
         .cloned()
         .collect::<HashSet<_>>();
+
+    if let Some(vcore_id) = validator_config.poh_pinned_cpu_core {
+        reserved.insert(vcore_id);
+    }
+
     if !reserved.is_empty() {
         let available = core_affinity::get_core_ids()
             .unwrap_or_default()
@@ -860,6 +875,7 @@ pub fn execute(
     admin_rpc_service::run(
         &ledger_path,
         admin_rpc_service::AdminRpcRequestMetadata {
+            flags2: validator_config.voting_patch_flags2.clone(),
             rpc_addr: validator_config.rpc_addrs.map(|(rpc_addr, _)| rpc_addr),
             start_time: std::time::SystemTime::now(),
             validator_exit: validator_config.validator_exit.clone(),
@@ -1062,6 +1078,20 @@ pub fn execute(
         *start_progress.write().unwrap() = ValidatorStartProgress::Initializing;
     }
 
+    if matches.is_present("limit_ledger_size") {
+        let limit_ledger_size = match matches.value_of("limit_ledger_size") {
+            Some(_) => value_t_or_exit!(matches, "limit_ledger_size", u64),
+            None => *DEFAULT_MAX_LEDGER_SHREDS,
+        };
+        if limit_ledger_size < *DEFAULT_MIN_MAX_LEDGER_SHREDS {
+            Err(format!(
+                "The provided --limit-ledger-size value was too small, the minimum value is {}",
+                *DEFAULT_MIN_MAX_LEDGER_SHREDS,
+            ))?;
+        }
+        validator_config.max_ledger_shreds = Some(limit_ledger_size);
+    }
+
     if operation == Operation::Initialize {
         info!("Validator ledger initialization complete");
         return Ok(());
@@ -1223,8 +1253,32 @@ fn new_snapshot_config(
     account_paths: &[PathBuf],
     incremental_snapshot_fetch: bool,
 ) -> Result<SnapshotConfig, Box<dyn std::error::Error>> {
+    let mut no_snapshots = if matches.occurrences_of("no_snapshots") == 0 {
+        None
+    } else {
+        matches
+            .value_of("no_snapshots")
+            .map(|value| value == "true")
+    };
+    if matches.occurrences_of("snapshot_interval_slots") > 0
+        || matches.occurrences_of("full_snapshot_interval_slots") > 0
+    {
+        match no_snapshots {
+            Some(true) => {
+                return Err(Box::new(clap::Error::with_description(
+                    "The --no-snapshots argument is not compatible with --snapshot-interval-slots \
+                     or --full-snapshot-interval-slots",
+                    clap::ErrorKind::ArgumentConflict,
+                )));
+            }
+            None | Some(false) => {
+                no_snapshots = Some(false);
+            }
+        }
+    }
+
     let (full_snapshot_archive_interval, incremental_snapshot_archive_interval) =
-        if matches.is_present("no_snapshots") {
+        if no_snapshots.unwrap_or(true) {
             // snapshots are disabled
             (SnapshotInterval::Disabled, SnapshotInterval::Disabled)
         } else {
